@@ -4,7 +4,12 @@ on:
   schedule:
     # Türkiye saatiyle 08:00, 13:00 ve 19:00 (UTC+3)
     - cron: '0 5,10,16 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      budget:
+        description: 'Bu çalıştırmada en fazla açılacak ürün sayfası'
+        required: false
+        default: '400'
 
 permissions:
   contents: write
@@ -16,7 +21,7 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
@@ -27,23 +32,31 @@ jobs:
       - name: Siteden katalog üret
         env:
           CATALOG_OUT: ${{ github.workspace }}/catalog.new.json
+          CATALOG_PREV: ${{ github.workspace }}/catalog.json
+          CATALOG_STATE: ${{ github.workspace }}/state.json
+          DETAIL_BUDGET: ${{ github.event.inputs.budget || '400' }}
         run: node tool/build_demo_catalog.mjs
 
-      - name: Değiştiyse yayınla
+      - name: Yayınla
         run: |
           changed=$(node -e '
             const fs = require("fs");
             const strip = (f) => { const c = JSON.parse(fs.readFileSync(f, "utf8")); delete c.generatedAt; return JSON.stringify(c); };
             console.log(strip("catalog.json") === strip("catalog.new.json") ? "no" : "yes");
           ')
-          if [ "$changed" = "no" ]; then
-            echo "Sitede değişiklik yok."
+          if [ "$changed" = "yes" ]; then
+            mv catalog.new.json catalog.json
+            msg="Katalog güncellendi"
+          else
             rm catalog.new.json
-            exit 0
+            msg="Tarama durumu güncellendi"
           fi
-          mv catalog.new.json catalog.json
           git config user.name "katalog-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add catalog.json
-          git commit -m "Katalog güncellendi ($(date -u +%Y-%m-%dT%H:%MZ))"
+          git add catalog.json state.json
+          if git diff --cached --quiet; then
+            echo "Değişiklik yok."
+            exit 0
+          fi
+          git commit -m "$msg ($(date -u +%Y-%m-%dT%H:%MZ))"
           git push
