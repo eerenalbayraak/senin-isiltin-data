@@ -1,0 +1,12 @@
+{
+  "android": {
+    "minVersion": "0.1.0",
+    "latestVersion": "0.1.0",
+    "storeUrl": "https://play.google.com/store/apps/details?id=com.seninisiltin.senin_isiltin"
+  },
+  "ios": {
+    "minVersion": "0.1.0",
+    "latestVersion": "0.1.0"
+  },
+  "message": "Yeni sürümümüz yayında! Güncelleyerek yeniliklerden yararlanabilirsiniz."
+}
